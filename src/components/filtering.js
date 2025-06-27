@@ -1,14 +1,54 @@
 import {createComparison, defaultRules} from "../lib/compare.js";
 
-// @todo: #4.3 — настроить компаратор
+const compare = createComparison(defaultRules);
 
 export function initFiltering(elements, indexes) {
-    // @todo: #4.1 — заполнить выпадающие списки опциями
+
+    Object.keys(indexes).forEach((elementName) => {
+      elements[elementName].append(
+        ...Object.values(indexes[elementName]).map(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            option.selected = false;
+            return option;
+          })
+      )
+    })
 
     return (data, state, action) => {
-        // @todo: #4.2 — обработать очистку поля
+        if (action && action.type === 'reset') {
+          Object.keys(indexes).forEach((elementName) => {
+            [...elements[elementName].children].forEach((item) => {
+              state[elements[elementName].name] = '';
+              item.selected = item.value;
+            })
+          })
+        }
 
-        // @todo: #4.5 — отфильтровать данные используя компаратор
-        return data;
+        return data.filter(row => compare(row, state));
     }
 }
+
+export function initRangeFiltering(data, state, action) {
+  return (data, state, action) => {
+
+    const {totalFrom, totalTo} = state;
+
+    return data.filter(row => {
+
+      if (totalFrom && totalTo) {
+        return row.total >= totalFrom && row.total <= totalTo;
+      }
+      if (totalFrom) {
+        return row.total >= totalFrom;
+      }
+      if (totalTo) {
+        return row.total <= totalTo;
+      }
+
+      return true;
+    });
+  }
+}
+

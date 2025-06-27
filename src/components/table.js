@@ -11,13 +11,36 @@ export function initTable(settings, onAction) {
     const {tableTemplate, rowTemplate, before, after} = settings;
     const root = cloneTemplate(tableTemplate);
 
-    // @todo: #1.2 —  вывести дополнительные шаблоны до и после таблицы
+    before.reverse().forEach(subName => {
+        root[subName] = cloneTemplate(subName);
+        root.container.prepend(root[subName].container);
+    });
 
-    // @todo: #1.3 —  обработать события и вызвать onAction()
+    after.forEach(subName => {
+        root[subName] = cloneTemplate(subName);
+        root.container.append(root[subName].container);
+    });
+
+    root.container.addEventListener('change', (e) => {onAction()});
+    root.container.addEventListener('reset', (e) => {
+      setTimeout(onAction(e));
+
+    });
+    root.container.addEventListener('submit', (e) => {
+      e.preventDefault();
+      onAction(e.submitter);
+    });
 
     const render = (data) => {
-        // @todo: #1.1 — преобразовать данные в массив строк на основе шаблона rowTemplate
-        const nextRows = [];
+        const nextRows = data.map(item => {
+          const {container, elements} = cloneTemplate('row');
+          Object.keys(item).forEach(key => {
+            if(elements[key]){
+              elements[key].textContent = item[key];
+            }
+          })
+          return container;
+        })
         root.elements.rows.replaceChildren(...nextRows);
     }
 
