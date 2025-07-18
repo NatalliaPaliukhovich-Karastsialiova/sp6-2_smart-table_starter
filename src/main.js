@@ -1,18 +1,16 @@
 import './fonts/ys-display/fonts.css'
 import './style.css'
 
-import {data as sourceData} from "./data/dataset_1.js";
-
 import {initData} from "./data.js";
 import {processFormData} from "./lib/utils.js";
 
 import {initTable} from "./components/table.js";
 import {initPagination} from './components/pagination.js';
 import {initSorting} from './components/sorting.js';
-import {initFiltering, initRangeFiltering} from './components/filtering.js';
+import {initFiltering} from './components/filtering.js';
 import {initSearching} from './components/searching.js';
 
-const {data, ...indexes} = initData(sourceData);
+const API = initData();
 
 /**
  * Сбор и обработка полей из таблицы
@@ -35,25 +33,19 @@ function collectState() {
  * Перерисовка состояния таблицы при любых изменениях
  * @param {HTMLButtonElement?} action
  */
-function render(action) {
+async function render(action) {
     let state = collectState();
-    let result = [...data];
+    let query = {};
 
-    if(action && action.type === 'reset'){
-      Object.keys(state).forEach(key => {
-        if(key !== 'page' && key !== 'rowsPerPage'){
-          state[key] = '';
-        }
-      });
-    }
+    query = applyPagination(query, state, action);
+    query = applyFiltering(query, state, action);
+    query = applySearching(query, state, action);
+    query = applySorting(query, state, action);
 
-    result = applySearing(result, state, action);
-    result = applyFiltering(result, state, action);
-    result = applyRangeFiltering(result, state, action);
-    result = applySorting(result, state, action);
-    result = applyPagination(result, state, action);
+    const { total, items } = await API.getRecords(query);
 
-    sampleTable.render(result)
+    updatePagination(total, query);
+    sampleTable.render(items);
 }
 
 const sampleTable = initTable({
@@ -68,8 +60,8 @@ const applySorting = initSorting([
     sampleTable.header.elements.sortByTotal
 ]);
 
-const applyPagination = initPagination(
-    sampleTable.pagination.elements,
+const {applyPagination, updatePagination} = initPagination(
+  sampleTable.pagination.elements,
     (el, page, isCurrent) => {
         const input = el.querySelector('input');
         const label = el.querySelector('span');
@@ -78,20 +70,29 @@ const applyPagination = initPagination(
         label.textContent = page;
         return el;
     }
-);
+  );
 
-const applyFiltering = initFiltering(sampleTable.filter.elements, {
-    searchBySeller: indexes.sellers
-});
+const {applyFiltering, updateIndexes} = initFiltering(sampleTable.filter.elements);
 
-const applyRangeFiltering = initRangeFiltering(sampleTable.filter.elements, {
-    searchBySeller: indexes.sellers
-});
-
-const applySearing = initSearching('search');
-
+const applySearching = initSearching('search');
 
 const appRoot = document.querySelector('#app');
 appRoot.appendChild(sampleTable.container);
 
-render();
+async function init() {
+  const indexes = await API.getIndexes();
+
+  updateIndexes(sampleTable.filter.elements, {
+    searchBySeller: indexes.sellers
+  });
+
+  const select = document.getElementById('rowsPerPage');
+  select.addEventListener('change', () => {
+    const page = document.querySelector('.pagination-button input');
+    page.value = '1';
+    page.checked = true;
+  })
+}
+
+
+init().then(render);

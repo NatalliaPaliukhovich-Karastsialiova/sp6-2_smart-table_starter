@@ -1,54 +1,33 @@
-import {createComparison, defaultRules} from "../lib/compare.js";
-
-const compare = createComparison(defaultRules);
-
 export function initFiltering(elements, indexes) {
 
+  const updateIndexes = (elements, indexes) => {
     Object.keys(indexes).forEach((elementName) => {
-      elements[elementName].append(
-        ...Object.values(indexes[elementName]).map(name => {
-            const option = document.createElement('option');
-            option.value = name;
-            option.textContent = name;
-            option.selected = false;
-            return option;
-          })
-      )
+        elements[elementName].append(...Object.values(indexes[elementName]).map(name => {
+            const el = document.createElement('option');
+            el.textContent = name;
+            el.value = name;
+            el.selected = false;
+            return el;
+        }))
+    })
+  }
+
+  const applyFiltering = (query, state, action) => {
+
+    const filter = {};
+    Object.keys(elements).forEach(key => {
+        if (elements[key]) {
+            if (['INPUT', 'SELECT'].includes(elements[key].tagName) && elements[key].value) { // ищем поля ввода в фильтре с непустыми данными
+                filter[`filter[${elements[key].name}]`] = elements[key].value; // чтобы сформировать в query вложенный объект фильтра
+            }
+        }
     })
 
-    return (data, state, action) => {
-        if (action && action.type === 'reset') {
-          Object.keys(indexes).forEach((elementName) => {
-            [...elements[elementName].children].forEach((item) => {
-              state[elements[elementName].name] = '';
-              item.selected = item.value;
-            })
-          })
-        }
+    return Object.keys(filter).length ? Object.assign({}, query, filter) : query; // если в фильтре что-то добавилось, применим к запросу
+  }
 
-        return data.filter(row => compare(row, state));
-    }
-}
-
-export function initRangeFiltering(data, state, action) {
-  return (data, state, action) => {
-
-    const {totalFrom, totalTo} = state;
-
-    return data.filter(row => {
-
-      if (totalFrom && totalTo) {
-        return row.total >= totalFrom && row.total <= totalTo;
-      }
-      if (totalFrom) {
-        return row.total >= totalFrom;
-      }
-      if (totalTo) {
-        return row.total <= totalTo;
-      }
-
-      return true;
-    });
+  return {
+    updateIndexes,
+    applyFiltering
   }
 }
-

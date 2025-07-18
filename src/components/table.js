@@ -23,7 +23,7 @@ export function initTable(settings, onAction) {
 
     root.container.addEventListener('change', (e) => {onAction()});
     root.container.addEventListener('reset', (e) => {
-      setTimeout(onAction(e));
+      setTimeout(() => onAction(e));
 
     });
     root.container.addEventListener('submit', (e) => {
@@ -43,6 +43,7 @@ export function initTable(settings, onAction) {
         })
         root.elements.rows.replaceChildren(...nextRows);
     }
+
 
     return {...root, render};
 }
